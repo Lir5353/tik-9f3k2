@@ -135,6 +135,15 @@
   th.n { text-align: left; }
   .tick { font-weight: 500; }
 
+
+  .rem { display: grid; gap: 10px; margin: 10px 0 0; padding: 0; list-style: none; }
+  .rem li { display: grid; gap: 2px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; }
+  .rem li.due { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
+  .rem li.off { opacity: .55; }
+  .rem .t { font-weight: 500; }
+  .rem .s { color: var(--muted); font-size: .85rem; }
+  .rem .tag { justify-self: start; font-size: .75rem; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+  .rem li.due .tag { color: var(--panel); background: var(--accent); border-color: var(--accent); }
   footer { color: var(--muted); font-size: .8rem; text-align: center; }
 
   .ccy { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; padding: 2px; justify-self: start; }
@@ -180,6 +189,11 @@
         <div class="big num" id="gain">—</div>
         <div class="small"><span class="num" id="gain-pct">—</span><span class="num" id="gain-alt">—</span></div>
       </div>
+    </section>
+
+    <section class="card" id="reminders" hidden>
+      <h2>תזכורות</h2>
+      <ul class="rem" id="rem-list"></ul>
     </section>
 
     <section class="card" id="value-over-time">
@@ -238,6 +252,7 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<script>document.write('<script src="reminders.js?t=' + Date.now() + '"><\/script>');</script>
 <script>/* always load fresh data: GitHub Pages lets browsers cache files for 10 minutes */document.write('<script src="data.js?t=' + Date.now() + '"><\/script>');</script>
 <script>
 (() => {
@@ -555,10 +570,60 @@
     drawChart();
   }
 
+
+  // ---------- Reminders ----------
+  function drawReminders() {
+    const R = window.REMINDERS;
+    const box = $('reminders');
+    if (!R) { box.hidden = true; return; }
+    const today = new Date().toLocaleDateString('en-CA');
+    const cashIls = Math.round(buys.filter((b) => b.ticker === 'ILS').reduce((s, b) => s + b.shares, 0));
+    const cash = cashIls > 0 ? ' (כ-\u20AA' + d3.format(',')(cashIls) + ')' : '';
+    const items = [];
+    const fmtDay = (s) => dayFull(s);
+    if (R.war && R.war.trigger) {
+      const due = R.war.due;
+      items.push({
+        title: 'הסלמה בין ארה״ב לאיראן: לקנות בשאר הקאש' + cash,
+        sub: 'ההסלמה זוהתה ב-' + fmtDay(R.war.trigger) + '. מועד הקנייה: ' + fmtDay(due) + ' (3 ימים אחרי).',
+        due: today >= due,
+        tag: today >= due ? 'הגיע הזמן' : 'מתקרב',
+      });
+      items.push({title: 'קנייה ב-1 בינואר 2027', sub: 'בוטלה, כי ההסלמה קדמה לה.', off: true, tag: 'בוטלה'});
+    } else {
+      items.push({
+        title: 'אם תהיה הסלמה בין ארה״ב לאיראן: לקנות 3 ימים אחרי, בשאר הקאש' + cash,
+        sub: (R.war && R.war.rule) || '',
+        tag: 'ממתינה',
+      });
+      const jan = (R.jan && R.jan.due) || '2027-01-01';
+      items.push({
+        title: 'אם לא הייתה הסלמה: לקנות ב-' + fmtDay(jan) + ' בשאר הקאש' + cash,
+        sub: today >= jan ? 'התאריך הגיע.' : 'עוד ' + Math.max(0, Math.round((new Date(jan) - new Date(today)) / 864e5)) + ' ימים.',
+        due: today >= jan,
+        tag: today >= jan ? 'הגיע הזמן' : 'ממתינה',
+      });
+    }
+    const ul = $('rem-list');
+    ul.replaceChildren();
+    for (const it of items) {
+      const li = document.createElement('li');
+      if (it.due) li.className = 'due';
+      if (it.off) li.className = 'off';
+      const tag = document.createElement('span'); tag.className = 'tag'; tag.textContent = it.tag;
+      const t1 = document.createElement('div'); t1.className = 't'; t1.textContent = it.title;
+      li.append(tag, t1);
+      if (it.sub) { const s = document.createElement('div'); s.className = 's'; s.textContent = it.sub; li.appendChild(s); }
+      ul.appendChild(li);
+    }
+    box.hidden = none;
+  }
+
   setRangeButtons();
   $('ccy-usd').setAttribute('aria-pressed', String(ccy === 'usd'));
   $('ccy-ils').setAttribute('aria-pressed', String(ccy === 'ils'));
   drawAll();
+  drawReminders();
   let lastW = $('chart').clientWidth;
   new ResizeObserver(() => { const w = $('chart').clientWidth; if (w !== lastW) { lastW = w; drawChart(); } }).observe($('chart'));
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', drawChart);
