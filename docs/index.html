@@ -221,7 +221,7 @@
 
     <section class="card" id="purchases">
       <h2>הרכישות</h2>
-      <p class="cardnote">כל קנייה שנרשמה, מהחדשה לישנה. המחיר הוא בדולרים, כפי ששולם.</p>
+      <p class="cardnote">כל קנייה שנרשמה, מהחדשה לישנה. מחיר ליחידה בדולרים. ביתרה קיימת זה ממוצע משוער.</p>
       <div class="scroll">
         <table>
           <thead>
@@ -302,8 +302,8 @@
   const fIls = (v, plus) => sign(v, plus) + '₪' + d3.format(',.0f')(Math.abs(v));
   const money = (usd, plus, rate) => (ccy === 'ils' ? fIls(usd * (rate ?? fx), plus) : fUsd(usd, plus));
   const other = (usd, plus) => (ccy === 'ils' ? fUsd(usd, plus) : fIls(usd * fx, plus));
-  const pct = (v, plus) => sign(v, plus) + d3.format('.1%')(Math.abs(v));
-  const qty = d3.format(',.4~f');
+  const pct = (v, plus) => (v < -0.00005 ? minus : plus && v > 0.00005 ? '+' : '') + d3.format('.1%')(Math.abs(v));
+  const qty = d3.format(',.8~f');
   const dayFull = (s) => d3.utcFormat('%d/%m/%Y')(new Date(s + 'T00:00:00Z'));
   const tone = (el, v) => { el.classList.toggle('up', v > 0.004); el.classList.toggle('down', v < -0.004); };
   const $ = (id) => document.getElementById(id);
@@ -376,8 +376,8 @@
       td(tr, h.ticker, 'tick');
       td(tr, h.name || '');
       td(tr, qty(h.shares), 'n');
-      td(tr, money(h.avg), 'n');
-      td(tr, money(h.price), 'n');
+      td(tr, h.ticker === 'ILS' ? '\u2014' : money(h.avg), 'n');
+      td(tr, h.ticker === 'ILS' ? '\u2014' : money(h.price), 'n');
       td(tr, money(h.value), 'n');
       td(tr, money(h.gain, true), 'n', h.gain);
       td(tr, pct(h.pct, true), 'n', h.gain);
@@ -391,7 +391,7 @@
       td(tr, b.ticker, 'tick');
       td(tr, b.name || '');
       td(tr, qty(b.shares), 'n');
-      td(tr, fUsd(b.price_usd), 'n');
+      td(tr, b.ticker === 'ILS' ? '\u2014' : fUsd(b.price_usd), 'n');
       td(tr, fUsd(b.shares * b.price_usd), 'n');
       lb.appendChild(tr);
     }

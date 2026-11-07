@@ -23,6 +23,9 @@ PRICES = HERE / "prices.csv"
 DATA_JS = HERE / "docs" / "data.js"
 FX_SYMBOL = "ILS=X"  # Yahoo's symbol for USD -> ILS
 FX_TICKER = "USDILS"
+CASH_TICKER = "ILS"  # cash in shekels: 1 unit = 1 shekel, priced as 1 / USDILS
+# Display ticker -> Yahoo symbol, for tickers that differ (crypto).
+SYMBOLS = {"BTC": "BTC-USD", "BNB": "BNB-USD", "ETH": "ETH-USD"}
 
 
 def fetch(symbol, start, end):
@@ -85,7 +88,9 @@ def main():
 
     symbols = [(FX_SYMBOL, FX_TICKER)]
     for r in purchases:
-        pair = (r["ticker"], r["ticker"])
+        if r["ticker"] == CASH_TICKER:
+            continue
+        pair = (SYMBOLS.get(r["ticker"], r["ticker"]), r["ticker"])
         if pair not in symbols:
             symbols.append(pair)
 
@@ -99,6 +104,9 @@ def main():
         if not closes:
             failed.append("%s (no rows)" % ticker)
         rows += [(day, ticker, close) for day, close in closes.items()]
+
+    if any(r["ticker"] == CASH_TICKER for r in purchases):
+        rows += [(day, CASH_TICKER, round(1 / close, 6)) for day, t, close in rows if t == FX_TICKER]
 
     if not rows:
         sys.exit("No prices fetched: " + "; ".join(failed))
