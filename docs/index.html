@@ -1,0 +1,567 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>תיק ההשקעות</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@400;500&family=Rubik:wght@400;500&display=swap">
+<style>
+  /* Layout: one right-to-left column, phone first. Header, three figures, value-over-time chart,
+     what the portfolio is made of, holdings, purchases. A ledger-green accent on a paper-grey ground. */
+  :root {
+    --bg: #f5f6f3;
+    --panel: #ffffff;
+    --fg: #1d2420;
+    --muted: #5d6862;
+    --line: #dfe3de;
+    --accent: #1f7a55;
+    --cost: #a7b0aa;
+    --up: #17784f;
+    --down: #b3362f;
+    --grid: #e9ece8;
+    --tip: #ffffff;
+    --shadow: 0 6px 24px rgba(20, 35, 28, .12);
+    --display: "Frank Ruhl Libre", "Times New Roman", serif;
+    --body: "Rubik", "Arial Hebrew", Arial, sans-serif;
+    --r: 12px;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #121614; --panel: #1a201d; --fg: #e8ece9; --muted: #9aa59f; --line: #2b332f;
+      --accent: #4fc08f; --cost: #6b7570; --up: #5cc995; --down: #ef7d72; --grid: #232a26;
+      --tip: #222a26; --shadow: 0 6px 24px rgba(0, 0, 0, .45); color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #121614; --panel: #1a201d; --fg: #e8ece9; --muted: #9aa59f; --line: #2b332f;
+    --accent: #4fc08f; --cost: #6b7570; --up: #5cc995; --down: #ef7d72; --grid: #232a26;
+    --tip: #222a26; --shadow: 0 6px 24px rgba(0, 0, 0, .45); color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--body);
+    font-size: 16px;
+    line-height: 1.5;
+    font-variant-numeric: tabular-nums;
+  }
+  .wrap {
+    max-width: 64rem;
+    margin-inline: auto;
+    padding-block: max(24px, env(safe-area-inset-top, 0px)) max(40px, env(safe-area-inset-bottom, 0px));
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    display: grid;
+    gap: 20px;
+  }
+  .num { direction: ltr; unicode-bidi: isolate; display: inline-block; }
+
+  header { display: grid; gap: 4px; }
+  h1 { margin: 0; font-family: var(--display); font-weight: 500; font-size: clamp(1.9rem, 1.4rem + 2vw, 2.6rem); line-height: 1.15; text-wrap: balance; }
+  .sub { margin: 0; color: var(--muted); font-size: .9rem; }
+  .sub b { color: var(--fg); font-weight: 500; }
+
+  .note { margin: 0; padding: 10px 14px; border: 1px dashed var(--line); border-radius: var(--r); color: var(--muted); font-size: .9rem; }
+  .empty { padding: 40px 20px; border: 1px dashed var(--line); border-radius: var(--r); text-align: center; }
+  .empty h2 { margin: 0 0 6px; font-size: 1.15rem; font-weight: 500; }
+  .empty p { margin: 0; color: var(--muted); }
+
+  .tiles { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr)); }
+  .card { min-width: 0; background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 18px; }
+  .tile { display: grid; gap: 4px; align-content: start; }
+  .tile.hero { border-color: color-mix(in srgb, var(--accent) 35%, var(--line)); }
+  .label { color: var(--muted); font-size: .85rem; }
+  .big { font-family: var(--display); font-weight: 400; font-size: clamp(1.8rem, 1.3rem + 2vw, 2.4rem); line-height: 1.1; justify-self: start; }
+  .small { color: var(--muted); display: flex; flex-wrap: wrap; gap: 10px; font-size: .95rem; }
+  .up { color: var(--up); }
+  .down { color: var(--down); }
+
+  .card h2 { margin: 0; font-size: 1.1rem; font-weight: 500; }
+  .cardnote { margin: 2px 0 14px; color: var(--muted); font-size: .85rem; }
+  .legend { list-style: none; margin: 0 0 8px; padding: 0; display: flex; flex-wrap: wrap; gap: 16px; font-size: .85rem; color: var(--muted); }
+  .legend li { display: flex; align-items: center; gap: 6px; }
+  .sw { display: inline-block; width: 14px; height: 3px; border-radius: 2px; background: var(--accent); }
+  .sw.cost { background: var(--cost); }
+
+  .chart { position: relative; direction: ltr; min-height: 260px; }
+  .chart svg { display: block; overflow: visible; }
+  .chart text { fill: var(--muted); font-size: 12px; font-family: var(--body); }
+  .tip {
+    position: absolute; top: 0; direction: rtl; white-space: nowrap; pointer-events: none;
+    background: var(--tip); border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow);
+    padding: 6px 10px; font-size: .8rem; display: grid; gap: 2px;
+  }
+  .tip .d { color: var(--muted); }
+  .tip .row { display: flex; align-items: center; gap: 6px; }
+  .tip .row .num { margin-inline-start: auto; padding-inline-start: 12px; }
+
+  .ranges { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+  .ranges button {
+    font: inherit; font-size: .85rem; color: var(--muted); background: transparent; cursor: pointer;
+    border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px;
+  }
+  .ranges button[aria-pressed="true"] { color: var(--fg); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+  .ranges button:focus-visible, .ccy button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .alloc { display: grid; gap: 12px; }
+  .arow { display: grid; grid-template-columns: minmax(0, 12rem) minmax(3rem, 1fr) auto; gap: 10px; align-items: center; }
+  .aname { min-width: 0; overflow-wrap: anywhere; }
+  .aname b { font-weight: 500; }
+  .aname span { color: var(--muted); font-size: .85rem; }
+  .track { height: 14px; background: var(--grid); border-radius: 4px; overflow: hidden; }
+  .bar { height: 100%; min-width: 2px; border-radius: 4px; background: var(--accent); }
+  .aval { text-align: left; white-space: nowrap; }
+  .aval span { color: var(--muted); }
+  @media (max-width: 30rem) {
+    .arow { grid-template-columns: minmax(0, 1fr) auto; }
+    .track { grid-column: 1 / -1; order: 3; }
+  }
+
+  .scroll { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { padding: 8px 10px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--line); }
+  th { font-weight: 500; color: var(--muted); font-size: .8rem; }
+  tbody tr:last-child td { border-bottom: 0; }
+  td.n { text-align: left; direction: ltr; }
+  th.n { text-align: left; }
+  .tick { font-weight: 500; }
+
+  footer { color: var(--muted); font-size: .8rem; text-align: center; }
+
+  .ccy { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; padding: 2px; justify-self: start; }
+  .ccy button { font: inherit; font-size: .85rem; border: 0; background: transparent; color: var(--muted); padding: 3px 12px; border-radius: 999px; cursor: pointer; }
+  .ccy button[aria-pressed="true"] { background: var(--accent); color: var(--panel); }
+  .headrow { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="headrow">
+      <h1>תיק ההשקעות</h1>
+      <div class="ccy" role="group" aria-label="מטבע">
+        <button type="button" id="ccy-usd" aria-pressed="true">דולר $</button>
+        <button type="button" id="ccy-ils" aria-pressed="false">שקל ₪</button>
+      </div>
+    </div>
+    <p class="sub">מעודכן ל-<b class="num" id="as-of">—</b> · דולר אחד = <b class="num" id="fx">—</b> ₪</p>
+  </header>
+
+  <p class="note" id="sample-note" hidden>הנתונים כאן הם דוגמה בלבד, כדי לראות איך הדף נראה. הם יוחלפו ברכישה האמיתית הראשונה.</p>
+
+  <section class="empty" id="empty" hidden>
+    <h2>עדיין אין רכישות</h2>
+    <p>ברגע שתירשם הרכישה הראשונה, התיק יופיע כאן עם הגרפים.</p>
+  </section>
+
+  <main id="body" style="display:grid;gap:20px">
+    <section class="tiles">
+      <div class="card tile hero">
+        <div class="label">שווי התיק היום</div>
+        <div class="big num" id="value">—</div>
+        <div class="small"><span class="num" id="value-alt">—</span></div>
+      </div>
+      <div class="card tile">
+        <div class="label">הושקע עד היום</div>
+        <div class="big num" id="cost">—</div>
+        <div class="small"><span class="num" id="cost-alt">—</span></div>
+      </div>
+      <div class="card tile">
+        <div class="label">רווח או הפסד מאז הקנייה</div>
+        <div class="big num" id="gain">—</div>
+        <div class="small"><span class="num" id="gain-pct">—</span><span class="num" id="gain-alt">—</span></div>
+      </div>
+    </section>
+
+    <section class="card" id="value-over-time">
+      <h2>שווי התיק לאורך זמן</h2>
+      <p class="cardnote">לפי מחיר הסגירה של כל יום מסחר, מול הסכום שהושקע עד אותו יום.</p>
+      <div class="ranges" role="group" aria-label="תקופה">
+        <button type="button" data-range="30" aria-pressed="false">חודש</button>
+        <button type="button" data-range="182" aria-pressed="false">חצי שנה</button>
+        <button type="button" data-range="365" aria-pressed="false">שנה</button>
+        <button type="button" data-range="0" aria-pressed="true">הכול</button>
+      </div>
+      <ul class="legend">
+        <li><i class="sw"></i>שווי התיק</li>
+        <li><i class="sw cost"></i>סכום שהושקע</li>
+      </ul>
+      <div class="chart" id="chart"></div>
+    </section>
+
+    <section class="card" id="allocation">
+      <h2>ממה התיק מורכב</h2>
+      <p class="cardnote">החלק של כל נייר משווי התיק היום.</p>
+      <div class="alloc" id="alloc"></div>
+    </section>
+
+    <section class="card" id="holdings">
+      <h2>האחזקות</h2>
+      <p class="cardnote">מחיר נוכחי = מחיר הסגירה האחרון.</p>
+      <div class="scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>סימול</th><th>שם</th><th class="n">כמות</th><th class="n">מחיר קנייה ממוצע</th>
+              <th class="n">מחיר נוכחי</th><th class="n">שווי</th><th class="n">רווח או הפסד</th><th class="n">%</th>
+            </tr>
+          </thead>
+          <tbody id="holdings-rows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card" id="purchases">
+      <h2>הרכישות</h2>
+      <p class="cardnote">כל קנייה שנרשמה, מהחדשה לישנה. המחיר הוא בדולרים, כפי ששולם.</p>
+      <div class="scroll">
+        <table>
+          <thead>
+            <tr><th>תאריך</th><th>סימול</th><th>שם</th><th class="n">כמות</th><th class="n">מחיר ליחידה</th><th class="n">סה״כ</th></tr>
+          </thead>
+          <tbody id="ledger-rows"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer>מחירים ושער דולר: Yahoo Finance, מחיר סגירה יומי.</footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<script src="data.js"></script>
+<script>
+(() => {
+  const P = window.PORTFOLIO || {purchases: [], prices: []};
+
+  // ---------- Calculations ----------
+  const byDay = {};
+  for (const [day, ticker, close] of P.prices) (byDay[day] || (byDay[day] = {}))[ticker] = close;
+  const priceDays = Object.keys(byDay).sort();
+  const last = {};
+  for (const day of priceDays) Object.assign(last, byDay[day]);
+  const fx = last.USDILS ?? null;
+  const asOf = priceDays[priceDays.length - 1] || null;
+
+  const buys = P.purchases
+    .map((b) => ({...b, shares: Number(b.shares), price_usd: Number(b.price_usd)}))
+    .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.id - b.id));
+
+  const hold = {};
+  for (const b of buys) {
+    const h = hold[b.ticker] || (hold[b.ticker] = {ticker: b.ticker, name: b.name, shares: 0, cost: 0});
+    h.shares += b.shares;
+    h.cost += b.shares * b.price_usd;
+  }
+  const holdings = Object.values(hold).filter((h) => h.shares > 0).map((h) => {
+    const price = last[h.ticker] ?? h.cost / h.shares;
+    const value = h.shares * price;
+    return {...h, avg: h.cost / h.shares, price, value, gain: value - h.cost, pct: h.cost ? (value - h.cost) / h.cost : 0};
+  }).sort((a, b) => b.value - a.value);
+  const totalValue = holdings.reduce((s, h) => s + h.value, 0);
+  const totalCost = holdings.reduce((s, h) => s + h.cost, 0);
+
+  // Daily history from the first purchase: what was held that day at that day's close.
+  const history = [];
+  if (buys.length) {
+    const first = buys[0].date;
+    const close = {};
+    for (const day of priceDays) { if (day >= first) break; Object.assign(close, byDay[day]); }
+    const days = [...new Set([...priceDays, ...buys.map((b) => b.date)])].filter((d) => d >= first).sort();
+    const shares = {};
+    let cost = 0;
+    let i = 0;
+    for (const day of days) {
+      while (i < buys.length && buys[i].date <= day) {
+        const b = buys[i++];
+        shares[b.ticker] = (shares[b.ticker] || 0) + b.shares;
+        cost += b.shares * b.price_usd;
+        if (close[b.ticker] == null) close[b.ticker] = b.price_usd;
+      }
+      Object.assign(close, byDay[day] || {});
+      let value = 0;
+      for (const t of Object.keys(shares)) value += shares[t] * close[t];
+      history.push({date: day, t: new Date(day + 'T00:00:00Z'), value, cost, fx: close.USDILS ?? fx});
+    }
+  }
+
+  // ---------- Formats ----------
+  let ccy = 'usd';
+  try { if (localStorage.getItem('ccy') === 'ils') ccy = 'ils'; } catch (e) {}
+  const minus = '−';
+  const sign = (v, plus) => (v < -0.004 ? minus : plus && v > 0.004 ? '+' : '');
+  const fUsd = (v, plus) => sign(v, plus) + '$' + d3.format(',.2f')(Math.abs(v));
+  const fIls = (v, plus) => sign(v, plus) + '₪' + d3.format(',.0f')(Math.abs(v));
+  const money = (usd, plus, rate) => (ccy === 'ils' ? fIls(usd * (rate ?? fx), plus) : fUsd(usd, plus));
+  const other = (usd, plus) => (ccy === 'ils' ? fUsd(usd, plus) : fIls(usd * fx, plus));
+  const pct = (v, plus) => sign(v, plus) + d3.format('.1%')(Math.abs(v));
+  const qty = d3.format(',.4~f');
+  const dayFull = (s) => d3.utcFormat('%d/%m/%Y')(new Date(s + 'T00:00:00Z'));
+  const tone = (el, v) => { el.classList.toggle('up', v > 0.004); el.classList.toggle('down', v < -0.004); };
+  const $ = (id) => document.getElementById(id);
+  const text = (id, s) => { const el = $(id); if (el) el.textContent = s; return el; };
+
+  // ---------- Static parts ----------
+  const none = buys.length === 0;
+  $('empty').hidden = !none;
+  $('body').hidden = none;
+  $('sample-note').hidden = !buys.some((b) => String(b.note || '').trim() === 'דוגמה');
+  text('as-of', asOf ? dayFull(asOf) : '—');
+  text('fx', fx ? d3.format('.3f')(fx) : '—');
+
+  function drawFigures() {
+    if (none || fx == null) return;
+    text('value', money(totalValue));
+    text('value-alt', other(totalValue));
+    text('cost', money(totalCost));
+    text('cost-alt', other(totalCost));
+    const g = totalValue - totalCost;
+    tone(text('gain', money(g, true)), g);
+    const gp = totalCost ? g / totalCost : 0;
+    tone(text('gain-pct', pct(gp, true)), g);
+    tone(text('gain-alt', other(g, true)), g);
+  }
+
+  function drawAlloc() {
+    const el = $('alloc');
+    el.replaceChildren();
+    const top = d3.max(holdings, (h) => h.value) || 1;
+    for (const h of holdings) {
+      const row = document.createElement('div');
+      row.className = 'arow';
+      const name = document.createElement('div');
+      name.className = 'aname';
+      const b = document.createElement('b');
+      b.textContent = h.ticker;
+      const s = document.createElement('span');
+      s.textContent = h.name || '';
+      name.append(b, ' ', s);
+      const track = document.createElement('div');
+      track.className = 'track';
+      const bar = document.createElement('div');
+      bar.className = 'bar';
+      bar.style.width = (h.value / top) * 100 + '%';
+      track.appendChild(bar);
+      const val = document.createElement('div');
+      val.className = 'aval num';
+      const m = document.createElement('span');
+      m.textContent = '  ' + money(h.value);
+      val.append(d3.format('.1%')(totalValue ? h.value / totalValue : 0), m);
+      row.append(name, track, val);
+      el.appendChild(row);
+    }
+  }
+
+  const td = (tr, s, cls, v) => {
+    const c = document.createElement('td');
+    if (cls) c.className = cls;
+    c.textContent = s;
+    if (v !== undefined) tone(c, v);
+    tr.appendChild(c);
+  };
+
+  function drawTables() {
+    const hb = $('holdings-rows');
+    hb.replaceChildren();
+    for (const h of holdings) {
+      const tr = document.createElement('tr');
+      td(tr, h.ticker, 'tick');
+      td(tr, h.name || '');
+      td(tr, qty(h.shares), 'n');
+      td(tr, money(h.avg), 'n');
+      td(tr, money(h.price), 'n');
+      td(tr, money(h.value), 'n');
+      td(tr, money(h.gain, true), 'n', h.gain);
+      td(tr, pct(h.pct, true), 'n', h.gain);
+      hb.appendChild(tr);
+    }
+    const lb = $('ledger-rows');
+    lb.replaceChildren();
+    for (const b of [...buys].reverse()) {
+      const tr = document.createElement('tr');
+      td(tr, dayFull(b.date));
+      td(tr, b.ticker, 'tick');
+      td(tr, b.name || '');
+      td(tr, qty(b.shares), 'n');
+      td(tr, fUsd(b.price_usd), 'n');
+      td(tr, fUsd(b.shares * b.price_usd), 'n');
+      lb.appendChild(tr);
+    }
+  }
+
+  // ---------- Chart ----------
+  let range = 0;
+  try { range = Number(localStorage.getItem('range') || 0) || 0; } catch (e) {}
+
+  function drawChart() {
+    const el = $('chart');
+    el.replaceChildren();
+    if (!history.length) return;
+    let rows = history;
+    if (range) {
+      const from = new Date(+history[history.length - 1].t - range * 864e5);
+      const cut = history.filter((r) => r.t >= from);
+      if (cut.length) rows = cut;
+    }
+    const val = (r) => (ccy === 'ils' ? r.value * r.fx : r.value);
+    const cst = (r) => (ccy === 'ils' ? r.cost * r.fx : r.cost);
+
+    const W = Math.max(el.clientWidth, 240);
+    const H = 260;
+    const svg = d3.select(el).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`)
+      .attr('role', 'img').attr('aria-label', 'שווי התיק והסכום שהושקע לאורך זמן');
+    const cs = getComputedStyle(document.documentElement);
+    const accent = cs.getPropertyValue('--accent').trim();
+
+    const yMax = d3.max(rows, (r) => Math.max(val(r), cst(r))) || 1;
+    const y = d3.scaleLinear([0, yMax * 1.08], [H - 28, 12]).nice(4);
+    const yTicks = y.ticks(4);
+    const sym = ccy === 'ils' ? '₪' : '$';
+    const yFmt = (v) => sym + d3.format(y.domain()[1] >= 10000 ? '~s' : ',.0f')(v);
+
+    const probe = svg.append('g');
+    let widest = 0;
+    for (const v of yTicks) widest = Math.max(widest, probe.append('text').text(yFmt(v)).node().getComputedTextLength());
+    probe.remove();
+    const m = {left: Math.ceil(widest) + 10, right: 24, top: 12, bottom: 28};
+
+    const t0 = rows[0].t;
+    const t1 = rows[rows.length - 1].t;
+    const day = 864e5;
+    const domain = t1 - t0 < day ? [new Date(+t0 - day), new Date(+t0 + day)] : [t0, t1];
+    const x = d3.scaleUtc(domain, [m.left, W - m.right]);
+
+    for (const v of yTicks) {
+      svg.append('line').attr('x1', m.left).attr('x2', W - m.right).attr('y1', y(v)).attr('y2', y(v))
+        .style('stroke', v === 0 ? 'var(--cost)' : 'var(--grid)').attr('stroke-width', 1);
+      svg.append('text').attr('x', m.left - 8).attr('y', y(v)).attr('dy', '0.32em').attr('text-anchor', 'end').text(yFmt(v));
+    }
+
+    const span = (domain[1] - domain[0]) / day;
+    const xFmt = d3.utcFormat(span > 300 ? '%m/%y' : '%d/%m');
+    const labelW = 44;
+    const count = Math.max(2, Math.floor((W - m.left - m.right) / (labelW * 1.8)));
+    let lastLabel = null;
+    let lastX = -Infinity;
+    for (const tick of x.ticks(count)) {
+      const label = xFmt(tick);
+      const px = x(tick);
+      if (label === lastLabel || px - lastX < labelW || px < m.left + 4 || px > W - m.right + 1) continue;
+      lastLabel = label;
+      lastX = px;
+      svg.append('text').attr('x', px).attr('y', H - 8).attr('text-anchor', 'middle').text(label);
+    }
+
+    const grad = svg.append('defs').append('linearGradient').attr('id', 'fade').attr('x1', 0).attr('y1', 0).attr('x2', 0).attr('y2', 1);
+    [[0, .26], [.25, .16], [.5, .08], [.75, .03], [1, 0]].forEach(([o, a]) =>
+      grad.append('stop').attr('offset', o).attr('style', `stop-color:${accent};stop-opacity:${a}`));
+
+    if (rows.length > 1) {
+      svg.append('path').attr('fill', 'url(#fade)').attr('d', d3.area().x((r) => x(r.t)).y0(y(0)).y1((r) => y(val(r)))(rows));
+      svg.append('path').attr('fill', 'none').style('stroke', 'var(--cost)').attr('stroke-width', 2)
+        .attr('stroke-linejoin', 'round').attr('stroke-linecap', 'round')
+        .attr('d', d3.line().x((r) => x(r.t)).y((r) => y(cst(r))).curve(d3.curveStepAfter)(rows));
+      svg.append('path').attr('fill', 'none').style('stroke', 'var(--accent)').attr('stroke-width', 2)
+        .attr('stroke-linejoin', 'round').attr('stroke-linecap', 'round')
+        .attr('d', d3.line().x((r) => x(r.t)).y((r) => y(val(r)))(rows));
+    }
+    const end = rows[rows.length - 1];
+    svg.append('circle').attr('cx', x(end.t)).attr('cy', y(val(end))).attr('r', 4)
+      .style('fill', 'var(--accent)').style('stroke', 'var(--panel)').attr('stroke-width', 2);
+
+    const rule = svg.append('line').attr('y1', m.top).attr('y2', y(0)).style('stroke', 'var(--cost)').attr('visibility', 'hidden');
+    const dC = svg.append('circle').attr('r', 4).style('fill', 'var(--cost)').style('stroke', 'var(--panel)').attr('stroke-width', 2).attr('visibility', 'hidden');
+    const dV = svg.append('circle').attr('r', 4).style('fill', 'var(--accent)').style('stroke', 'var(--panel)').attr('stroke-width', 2).attr('visibility', 'hidden');
+
+    const tip = document.createElement('div');
+    tip.className = 'tip';
+    tip.hidden = true;
+    el.appendChild(tip);
+    const line = (color, label, value, cls) => {
+      const r = document.createElement('div');
+      r.className = 'row';
+      if (color) { const s = document.createElement('i'); s.className = 'sw' + (color === 'cost' ? ' cost' : ''); r.appendChild(s); }
+      r.appendChild(document.createTextNode(label));
+      const v = document.createElement('span');
+      v.className = 'num' + (cls ? ' ' + cls : '');
+      v.textContent = value;
+      r.appendChild(v);
+      return r;
+    };
+    const bis = d3.bisector((r) => r.t).center;
+    const show = (ev) => {
+      const [px] = d3.pointer(ev, svg.node());
+      const r = rows[bis(rows, x.invert(px))];
+      if (!r) return;
+      const cx = x(r.t);
+      rule.attr('x1', cx).attr('x2', cx).attr('visibility', 'visible');
+      dV.attr('cx', cx).attr('cy', y(val(r))).attr('visibility', 'visible');
+      dC.attr('cx', cx).attr('cy', y(cst(r))).attr('visibility', 'visible');
+      const g = r.value - r.cost;
+      const d = document.createElement('div');
+      d.className = 'd';
+      d.textContent = dayFull(r.date);
+      tip.replaceChildren(d,
+        line('value', 'שווי התיק', money(r.value, false, r.fx)),
+        line('cost', 'הושקע', money(r.cost, false, r.fx)),
+        line(null, 'רווח או הפסד', money(g, true, r.fx), g > 0.004 ? 'up' : g < -0.004 ? 'down' : ''));
+      tip.hidden = false;
+      const k = el.clientWidth / W;
+      const tw = tip.offsetWidth;
+      const at = cx * k;
+      const left = at + 12 + tw > el.clientWidth ? at - 12 - tw : at + 12;
+      tip.style.left = Math.max(0, Math.min(left, el.clientWidth - tw)) + 'px';
+    };
+    const hide = () => { tip.hidden = true; rule.attr('visibility', 'hidden'); dV.attr('visibility', 'hidden'); dC.attr('visibility', 'hidden'); };
+    svg.append('rect').attr('x', m.left).attr('y', 0).attr('width', Math.max(0, W - m.left)).attr('height', H - m.bottom)
+      .attr('fill', 'transparent').style('touch-action', 'pan-y')
+      .on('pointerenter pointermove pointerdown', show).on('pointerleave', hide);
+  }
+
+  // ---------- Controls ----------
+  function setRangeButtons() {
+    document.querySelectorAll('[data-range]').forEach((b) => b.setAttribute('aria-pressed', String(Number(b.dataset.range) === range)));
+  }
+  document.querySelectorAll('[data-range]').forEach((b) => b.addEventListener('click', () => {
+    range = Number(b.dataset.range);
+    try { localStorage.setItem('range', String(range)); } catch (e) {}
+    setRangeButtons();
+    drawChart();
+  }));
+  function setCcy(c) {
+    ccy = c;
+    try { localStorage.setItem('ccy', c); } catch (e) {}
+    $('ccy-usd').setAttribute('aria-pressed', String(c === 'usd'));
+    $('ccy-ils').setAttribute('aria-pressed', String(c === 'ils'));
+    drawAll();
+  }
+  $('ccy-usd').addEventListener('click', () => setCcy('usd'));
+  $('ccy-ils').addEventListener('click', () => setCcy('ils'));
+
+  function drawAll() {
+    if (none) return;
+    drawFigures();
+    drawAlloc();
+    drawTables();
+    drawChart();
+  }
+
+  setRangeButtons();
+  $('ccy-usd').setAttribute('aria-pressed', String(ccy === 'usd'));
+  $('ccy-ils').setAttribute('aria-pressed', String(ccy === 'ils'));
+  drawAll();
+  let lastW = $('chart').clientWidth;
+  new ResizeObserver(() => { const w = $('chart').clientWidth; if (w !== lastW) { lastW = w; drawChart(); } }).observe($('chart'));
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', drawChart);
+})();
+</script>
+</body>
+</html>
