@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
+<meta http-equiv="Cache-Control" content="no-cache">
 <title>תיק ההשקעות</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -237,7 +238,7 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
-<script src="data.js"></script>
+<script>/* always load fresh data: GitHub Pages lets browsers cache files for 10 minutes */document.write('<script src="data.js?t=' + Date.now() + '"><\/script>');</script>
 <script>
 (() => {
   const P = window.PORTFOLIO || {purchases: [], prices: []};
