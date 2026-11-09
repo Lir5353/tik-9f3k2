@@ -108,8 +108,10 @@ def main():
     if any(r["ticker"] == CASH_TICKER for r in purchases):
         rows += [(day, CASH_TICKER, round(1 / close, 6)) for day, t, close in rows if t == FX_TICKER]
 
+    if failed:  # all or nothing: never overwrite good prices with a partial set
+        sys.exit("FAILED, nothing written: " + "; ".join(failed))
     if not rows:
-        sys.exit("No prices fetched: " + "; ".join(failed))
+        sys.exit("No prices fetched")
     rows.sort()
     with PRICES.open("w", newline="", encoding="utf-8") as f:
         w = csv.writer(f, lineterminator="\n")
@@ -117,9 +119,6 @@ def main():
         w.writerows(rows)
     build_site()
     print("prices.csv: %d rows, %d tickers, %s to %s" % (len(rows), len({r[1] for r in rows}), rows[0][0], rows[-1][0]))
-    if failed:
-        print("FAILED: " + "; ".join(failed))
-        sys.exit(1)
 
 
 if __name__ == "__main__":

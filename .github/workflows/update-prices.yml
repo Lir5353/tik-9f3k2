@@ -1,0 +1,36 @@
+name: update-prices
+
+# Pulls fresh closing prices and the USD/ILS rate, rebuilds docs/data.js and commits it when it changed.
+# Runs hourly, and on demand from the Actions tab (Run workflow).
+on:
+  schedule:
+    - cron: "7 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-prices
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch prices and rebuild the site data
+        run: python3 update.py
+      - name: Commit if changed
+        run: |
+          if git diff --quiet -- docs/data.js prices.csv; then
+            echo "no change"
+            exit 0
+          fi
+          git config user.name "prices-bot"
+          git config user.email "prices-bot@users.noreply.github.com"
+          git add docs/data.js prices.csv
+          git commit -m "עדכון מחירים אוטומטי"
+          git pull --rebase
+          git push
